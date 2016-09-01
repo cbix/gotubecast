@@ -140,6 +140,7 @@ func main() {
 	decodeBindStream(resp.Body)
 }
 
+// decodeBindStream takes an io.Reader (e.g. bind response body) and parses the command stream
 func decodeBindStream(r io.Reader) {
 	dec := json.NewDecoder(r)
 	dec.UseNumber()
@@ -152,7 +153,6 @@ func decodeBindStream(r io.Reader) {
 			fmt.Println("error:", err.Error())
 			return
 		}
-		//fmt.Printf("%T: %v", t, t)
 		switch t.(type) {
 		case json.Number:
 			// length, ignore
@@ -173,6 +173,7 @@ func decodeBindStream(r io.Reader) {
 	}
 }
 
+// genericCmd interpretes and executes commands from the bind stream
 func genericCmd(cmd string, paramsList []interface{}) {
 	switch cmd {
 	case "noop":

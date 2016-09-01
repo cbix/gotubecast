@@ -6,4 +6,5 @@ play/pause/seek/volume change commands etc. It doesn't have any dependencies and
 For example, use it on a Raspberry Pi in combination with youtube-dl and omxplayer for a DIY Chromecast clone or make a YouTube TV
 extension for your favorite media center software.
 
-Work in progress.
+Work in progress, still contains many hardcoded values. The essential commands are not implemented yet,
+but you can already connect your phone and watch the generic command stream.
