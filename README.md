@@ -6,5 +6,42 @@ play/pause/seek/volume change commands etc. It doesn't have any dependencies and
 For example, use it on a Raspberry Pi in combination with youtube-dl and omxplayer for a DIY Chromecast clone or make a YouTube TV
 extension for your favorite media center software.
 
-Work in progress, still contains many hardcoded values. The essential commands are not implemented yet,
-but you can already connect your phone and watch the generic command stream.
+## Build + Install
+Provided you have golang correctly set up:
+
+    go get github.com/CBiX/gotubecast
+
+## Run
+With default options:
+
+    gotubecast
+
+Give it a name:
+
+    gotubecast -n "Dumb TV" -i dumb-v1 
+
+## Text stream
+The following keys are being written to stdout:
+### Essential methods
+* '''pairing_code <aaa-bbb-ccc-ddd>''': the device pairing code formatted with separating dashes
+* '''video_id <id>'''
+* '''play'''
+* '''pause'''
+* '''seek_to <seconds>'''
+* '''set_volume <percent>'''
+
+### Other
+* '''noop''': do nothing
+* '''generic_cmd <cmd> <params>''': all non-implemented commands
+* '''remote_join <id> <name>''': client connects
+* '''remote_leave <id>''': client disconnects
+* '''next'''
+* '''previous'''
+* '''screen_id, lounge_token, option_sid, option_gsessionid''': these are needed by the API
+
+## Roadmap / TODO
+* testing
+* provide sample bash script for Raspberry Pi
+* video duration
+* autoplay
+* subtitles
