@@ -23,21 +23,21 @@ Give it a name:
 ## Text stream
 The following keys are being written to stdout:
 ### Essential methods
-* **pairing_code <aaa-bbb-ccc-ddd>**: the device pairing code formatted with separating dashes
-* **video_id <id>**
+* **pairing_code \<aaa-bbb-ccc-ddd\>**: the device pairing code formatted with separating dashes
+* **video\_id \<id\>**
 * **play**
 * **pause**
-* **seek_to <seconds>**
-* **set_volume <percent>**
+* **seek\_to \<seconds\>**
+* **set\_volume \<percent\>**
 
 ### Other
 * **noop**: do nothing
-* **generic_cmd <cmd> <params>**: all non-implemented commands
-* **remote_join <id> <name>**: client connects
-* **remote_leave <id>**: client disconnects
+* **generic\_cmd \<cmd\> \<params\>**: all non-implemented commands
+* **remote\_join \<id\> \<name\>**: client connects
+* **remote\_leave \<id\>**: client disconnects
 * **next**
 * **previous**
-* **screen_id, lounge_token, option_sid, option_gsessionid**: these are needed by the API
+* **screen\_id, lounge\_token, option\_sid, option\_gsessionid**: these are needed by the API
 
 ## Roadmap / TODO
 * testing
