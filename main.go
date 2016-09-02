@@ -25,6 +25,17 @@ type LoungeTokenScreenItem struct {
 	Expiration  uint64
 }
 
+type Video struct {
+	Id        string `json:"encrypted_id"`
+	Length    int    `json:"length_seconds"`
+	Title     string `json:"title"`
+	Thumbnail string `json:"thumbnail"`
+}
+
+type PlaylistInfo struct {
+	Video []Video
+}
+
 const (
 	defaultScreenName string = "Golang Test TV"
 	defaultScreenApp  string = "golang-test-838"
@@ -32,6 +43,7 @@ const (
 )
 
 var (
+	debugEnabled  bool
 	screenName    string
 	screenApp     string
 	bindVals      url.Values
@@ -43,13 +55,16 @@ var (
 	startTime time.Time
 	curTime   time.Duration
 
-	curVideoId string
-	curListId  string
-	curList    []string // Array of video IDs
-	curIndex   int
+	curVideoId    string
+	curVideo      Video
+	curListId     string
+	curList       []string // Array of video IDs
+	curIndex      int
+	curListVideos []Video
 )
 
 func init() {
+	flag.BoolVar(&debugEnabled, "d", false, "Enable debug information (including full cmd info)")
 	flag.StringVar(&screenName, "n", defaultScreenName, "Display Name")
 	flag.StringVar(&screenApp, "i", defaultScreenApp, "Display App")
 }
@@ -182,6 +197,11 @@ func decodeBindStream(r io.Reader) {
 
 // genericCmd interpretes and executes commands from the bind stream
 func genericCmd(cmd string, paramsList []interface{}) {
+	if debugEnabled {
+		debugInfo()
+		fmt.Printf("dbg_raw_cmd %v %#v\n", cmd, paramsList)
+	}
+
 	switch cmd {
 	case "noop":
 		fmt.Println("noop")
@@ -202,10 +222,13 @@ func genericCmd(cmd string, paramsList []interface{}) {
 		data := paramsList[0].(map[string]interface{})
 		id := data["id"].(string)
 		fmt.Println("remote_leave", id)
+	case "getNowPlaying":
 	case "setPlaylist":
 		data := paramsList[0].(map[string]interface{})
 		curVideoId = data["videoId"].(string)
 		curListId = data["listId"].(string)
+		info := getListInfo(curListId)
+		curListVideos = info.Video
 		currentTime := data["currentTime"].(string)
 		videoIds := data["videoIds"].(string)
 		curList = strings.Split(videoIds, ",")
@@ -213,6 +236,7 @@ func genericCmd(cmd string, paramsList []interface{}) {
 		if err != nil {
 			curIndex = 0
 		}
+		curVideo = curListVideos[curIndex]
 
 		// set startTime:
 		currentTimeDuration, err := time.ParseDuration(currentTime + "s")
@@ -235,16 +259,25 @@ func genericCmd(cmd string, paramsList []interface{}) {
 		postBind("onStateChange", map[string]string{
 			"currentTime": currentTime,
 			"state":       "1",
-			"duration":    "0",
+			"duration":    strconv.Itoa(curVideo.Length),
 			"cpn":         "foo",
 		})
 	case "updatePlaylist":
 		data := paramsList[0].(map[string]interface{})
-		videoIds := data["videoIds"].(string)
-		curList = strings.Split(videoIds, ",")
-		if curIndex >= len(curList) {
-			curIndex = len(curList) - 1
+		curListId = data["listId"].(string)
+		if data["videoIds"] != nil {
+			videoIds := data["videoIds"].(string)
+			curList = strings.Split(videoIds, ",")
+			if curIndex >= len(curList) {
+				curIndex = len(curList) - 1
+			}
+		} else {
+			//empty list
+			curList = []string{}
+			curIndex = 0
 		}
+		info := getListInfo(curListId)
+		curListVideos = info.Video
 	case "play":
 		fmt.Println("play")
 		playState = "1"
@@ -252,7 +285,7 @@ func genericCmd(cmd string, paramsList []interface{}) {
 		postBind("onStateChange", map[string]string{
 			"currentTime": fmt.Sprintf("%.3f", curTime.Seconds()),
 			"state":       "1",
-			"duration":    "0",
+			"duration":    strconv.Itoa(curVideo.Length),
 			"cpn":         "foo",
 		})
 	case "pause":
@@ -262,7 +295,7 @@ func genericCmd(cmd string, paramsList []interface{}) {
 		postBind("onStateChange", map[string]string{
 			"currentTime": fmt.Sprintf("%.3f", curTime.Seconds()),
 			"state":       "2",
-			"duration":    "0",
+			"duration":    strconv.Itoa(curVideo.Length),
 			"cpn":         "foo",
 		})
 	case "getVolume":
@@ -287,11 +320,12 @@ func genericCmd(cmd string, paramsList []interface{}) {
 		postBind("onStateChange", map[string]string{
 			"currentTime": newTime,
 			"state":       playState,
-			"duration":    "0",
+			"duration":    strconv.Itoa(curVideo.Length),
 			"cpn":         "foo",
 		})
 	case "stopVideo":
 		fmt.Println("stop")
+		postBind("nowPlaying", map[string]string{})
 	case "onUserActivity":
 		fmt.Println("user_action")
 	case "next":
@@ -301,6 +335,7 @@ func genericCmd(cmd string, paramsList []interface{}) {
 			curTime = 0
 			startTime = time.Now()
 			curVideoId = curList[curIndex]
+			curVideo = curListVideos[curIndex]
 			fmt.Println("video_id", curVideoId)
 			postBind("nowPlaying", map[string]string{
 				"videoId":      curVideoId,
@@ -313,7 +348,7 @@ func genericCmd(cmd string, paramsList []interface{}) {
 			postBind("onStateChange", map[string]string{
 				"currentTime": "0",
 				"state":       "1",
-				"duration":    "0",
+				"duration":    strconv.Itoa(curVideo.Length),
 				"cpn":         "foo",
 			})
 		}
@@ -324,6 +359,7 @@ func genericCmd(cmd string, paramsList []interface{}) {
 			curTime = 0
 			startTime = time.Now()
 			curVideoId = curList[curIndex]
+			curVideo = curListVideos[curIndex]
 			fmt.Println("video_id", curVideoId)
 			postBind("nowPlaying", map[string]string{
 				"videoId":      curVideoId,
@@ -336,13 +372,14 @@ func genericCmd(cmd string, paramsList []interface{}) {
 			postBind("onStateChange", map[string]string{
 				"currentTime": "0",
 				"state":       "1",
-				"duration":    "0",
+				"duration":    strconv.Itoa(curVideo.Length),
 				"cpn":         "foo",
 			})
 		}
 	default:
 		fmt.Printf("generic_cmd %s %v\n", cmd, paramsList)
 	}
+	debugInfo()
 }
 
 func postBind(sc string, params map[string]string) {
@@ -368,4 +405,36 @@ func postBind(sc string, params map[string]string) {
 		    fmt.Println(string(body))
 	*/
 	resp.Body.Close()
+}
+
+func debugInfo() {
+	fmt.Printf(
+		"dbg_info curVideoId=%v curListId=%v curList=%v curIndex=%v curTime=%.3f curVolume=%v curState=%v curListVideos=%v curVideo=%v\n",
+		curVideoId,
+		curListId,
+		curList,
+		curIndex, time.Now().Sub(startTime).Seconds(),
+		currentVolume,
+		playState,
+		curListVideos,
+		curVideo,
+	)
+}
+
+func getListInfo(listId string) (ret *PlaylistInfo) {
+	resp, err := http.Get("https://www.youtube.com/list_ajax?style=json&action_get_list=1&list=" + listId)
+	if err != nil {
+		panic(err)
+	}
+	defer resp.Body.Close()
+	body, err := ioutil.ReadAll(resp.Body)
+	if err != nil {
+		panic(err)
+	}
+	ret = new(PlaylistInfo)
+	err = json.Unmarshal(body, &ret)
+	if err != nil {
+		panic(err)
+	}
+	return
 }
