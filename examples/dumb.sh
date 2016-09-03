@@ -1,4 +1,7 @@
 #!/bin/bash
+# This TV player opens every started video in a new browser window.
+# It doesn't handle any controls (play/pause/...).
+# Use this script as a starting point for your own bash-based YouTube TV project!
 gotubecast -n "Dumb TV" -i dumb-v1 | while read line
 do
     cmd="`cut -d ' ' -f1 <<< "$line"`"

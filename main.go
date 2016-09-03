@@ -1,6 +1,6 @@
 package main
 
-// TODO documentation
+// TODO documentation, modularity
 
 import (
 	"encoding/json"
@@ -153,8 +153,6 @@ func main() {
 		bindValsGet := bindVals
 		bindValsGet["RID"] = []string{"rpc"}
 		bindValsGet["CI"] = []string{"0"}
-		//bindValsGet["TYPE"] = []string{"xmlhttp"}
-		//fmt.Println("bind start", "https://www.youtube.com/api/lounge/bc/bind?" + bindValsGet.Encode())
 		resp, err = http.Get("https://www.youtube.com/api/lounge/bc/bind?" + bindValsGet.Encode())
 		if err != nil {
 			panic(err)
@@ -392,20 +390,10 @@ func postBind(sc string, params map[string]string) {
 		postVals["req0_"+k] = []string{v}
 	}
 	bindVals["RID"] = []string{"1337"}
-	//bindVals["AID"] = []string{fmt.Sprintf("%v", ofs + 100)}
-	//fmt.Println("post start", "https://www.youtube.com/api/lounge/bc/bind?"+bindVals.Encode())
 	resp, err := http.PostForm("https://www.youtube.com/api/lounge/bc/bind?"+bindVals.Encode(), postVals)
 	if err != nil {
 		panic(err)
 	}
-	/*
-		    body, err := ioutil.ReadAll(resp.Body)
-			if err != nil {
-		        panic(err)
-			}
-		    fmt.Println("POST reply body:")
-		    fmt.Println(string(body))
-	*/
 	resp.Body.Close()
 }
 
