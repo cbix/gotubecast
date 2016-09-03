@@ -379,7 +379,9 @@ func genericCmd(cmd string, paramsList []interface{}) {
 	default:
 		fmt.Printf("generic_cmd %s %v\n", cmd, paramsList)
 	}
-	debugInfo()
+	if debugEnabled {
+		debugInfo()
+	}
 }
 
 func postBind(sc string, params map[string]string) {
