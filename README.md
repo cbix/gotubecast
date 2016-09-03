@@ -35,6 +35,16 @@ Minimal dumb YouTube TV example (opens every video in a new browser window, no c
         esac
     done
 
+Usage help:
+
+	$ gotubecast -h
+	Usage of gotubecast:
+	  -d	Enable debug information (including full cmd info)
+	  -i string
+			Display App (default "golang-test-838")
+	  -n string
+			Display Name (default "Golang Test TV")
+
 More in the examples folder.
 
 ## Text stream
