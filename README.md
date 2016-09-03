@@ -7,7 +7,7 @@ For example, use it on a Raspberry Pi in combination with youtube-dl and omxplay
 extension for your favorite media center software.
 
 ## Build + Install
-Provided you have golang correctly set up:
+Provided you have [golang correctly set up](https://golang.org/doc/install):
 
     go get github.com/CBiX/gotubecast
 
