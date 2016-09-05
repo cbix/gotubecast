@@ -12,6 +12,7 @@ import (
 	"net/url"
 	"strconv"
 	"strings"
+	"sync"
 	"time"
 )
 
@@ -50,6 +51,7 @@ var (
 	currentVolume string = "100"
 	ofs           uint64 = 0
 	playState     string = "3"
+	//playTimer     *time.Timer
 
 	// these two vars are used to determine the current playing time
 	startTime time.Time
@@ -61,6 +63,7 @@ var (
 	curList       []string // Array of video IDs
 	curIndex      int
 	curListVideos []Video
+	printLock     sync.Mutex
 )
 
 func init() {
@@ -83,7 +86,7 @@ func main() {
 		panic(err)
 	}
 	screenId := string(body)
-	fmt.Println("screen_id", screenId)
+	msgPrint(fmt.Sprintln("screen_id", screenId))
 
 	// lounge token:
 	resp, err = http.PostForm("https://www.youtube.com/api/lounge/pairing/get_lounge_token_batch", url.Values{"screen_ids": {screenId}})
@@ -101,7 +104,7 @@ func main() {
 		panic(err)
 	}
 	tokenScreenItem := tokenObj.Screens[0]
-	fmt.Println("lounge_token", tokenScreenItem.LoungeToken, tokenScreenItem.Expiration/1000)
+	msgPrint(fmt.Sprintln("lounge_token", tokenScreenItem.LoungeToken, tokenScreenItem.Expiration/1000))
 
 	bindVals = url.Values{
 		"device":        {"LOUNGE_SCREEN"},
@@ -128,24 +131,29 @@ func main() {
 	defer resp.Body.Close()
 	decodeBindStream(resp.Body)
 
-	// pairing code:
-	resp, err = http.PostForm("https://www.youtube.com/api/lounge/pairing/get_pairing_code?ctx=pair", url.Values{
-		"access_type":  {"permanent"},
-		"app":          {screenApp},
-		"lounge_token": {tokenScreenItem.LoungeToken},
-		"screen_id":    {tokenScreenItem.ScreenId},
-		"screen_name":  {screenName},
-	})
-	if err != nil {
-		panic(err)
-	}
-	defer resp.Body.Close()
-	body, err = ioutil.ReadAll(resp.Body)
-	if err != nil {
-		panic(err)
-	}
-	pairCode := string(body)
-	fmt.Printf("pairing_code %s-%s-%s-%s\n", pairCode[0:3], pairCode[3:6], pairCode[6:9], pairCode[9:12])
+	// pairing code every 5 minutes:
+	go func() {
+		for {
+			resp, err = http.PostForm("https://www.youtube.com/api/lounge/pairing/get_pairing_code?ctx=pair", url.Values{
+				"access_type":  {"permanent"},
+				"app":          {screenApp},
+				"lounge_token": {tokenScreenItem.LoungeToken},
+				"screen_id":    {tokenScreenItem.ScreenId},
+				"screen_name":  {screenName},
+			})
+			if err != nil {
+				panic(err)
+			}
+			defer resp.Body.Close()
+			body, err = ioutil.ReadAll(resp.Body)
+			if err != nil {
+				panic(err)
+			}
+			pairCode := string(body)
+			msgPrint(fmt.Sprintf("pairing_code %s-%s-%s-%s\n", pairCode[0:3], pairCode[3:6], pairCode[6:9], pairCode[9:12]))
+			time.Sleep(5 * time.Minute)
+		}
+	}()
 
 	// bind:
 	for {
@@ -197,29 +205,29 @@ func decodeBindStream(r io.Reader) {
 func genericCmd(cmd string, paramsList []interface{}) {
 	if debugEnabled {
 		debugInfo()
-		fmt.Printf("dbg_raw_cmd %v %#v\n", cmd, paramsList)
+		msgPrint(fmt.Sprintf("dbg_raw_cmd %v %#v\n", cmd, paramsList))
 	}
 
 	switch cmd {
 	case "noop":
-		fmt.Println("noop")
+		msgPrintln("noop")
 	case "c":
 		sid := paramsList[0].(string)
 		bindVals["SID"] = []string{sid}
-		fmt.Println("option_sid", sid)
+		msgPrint(fmt.Sprintln("option_sid", sid))
 	case "S":
 		gsessionid := paramsList[0].(string)
 		bindVals["gsessionid"] = []string{gsessionid}
-		fmt.Println("option_gsessionid", gsessionid)
+		msgPrint(fmt.Sprintln("option_gsessionid", gsessionid))
 	case "remoteConnected":
 		data := paramsList[0].(map[string]interface{})
 		id := data["id"].(string)
 		name := data["name"].(string)
-		fmt.Println("remote_join", id, name)
+		msgPrint(fmt.Sprintln("remote_join", id, name))
 	case "remoteDisconnected":
 		data := paramsList[0].(map[string]interface{})
 		id := data["id"].(string)
-		fmt.Println("remote_leave", id)
+		msgPrint(fmt.Sprintln("remote_leave", id))
 	case "getNowPlaying":
 	case "setPlaylist":
 		data := paramsList[0].(map[string]interface{})
@@ -244,7 +252,7 @@ func genericCmd(cmd string, paramsList []interface{}) {
 		curTime = currentTimeDuration
 		startTime = time.Now().Add(-curTime)
 
-		fmt.Println("video_id", curVideoId)
+		msgPrint(fmt.Sprintln("video_id", curVideoId))
 		postBind("nowPlaying", map[string]string{
 			"videoId":      curVideoId,
 			"currentTime":  currentTime,
@@ -277,7 +285,7 @@ func genericCmd(cmd string, paramsList []interface{}) {
 		info := getListInfo(curListId)
 		curListVideos = info.Video
 	case "play":
-		fmt.Println("play")
+		msgPrintln("play")
 		playState = "1"
 		startTime = time.Now().Add(-curTime)
 		postBind("onStateChange", map[string]string{
@@ -287,7 +295,7 @@ func genericCmd(cmd string, paramsList []interface{}) {
 			"cpn":         "foo",
 		})
 	case "pause":
-		fmt.Println("pause")
+		msgPrintln("pause")
 		playState = "2"
 		curTime = time.Now().Sub(startTime)
 		postBind("onStateChange", map[string]string{
@@ -301,12 +309,12 @@ func genericCmd(cmd string, paramsList []interface{}) {
 	case "setVolume":
 		data := paramsList[0].(map[string]interface{})
 		currentVolume = data["volume"].(string)
-		fmt.Println("set_volume", currentVolume)
+		msgPrint(fmt.Sprintln("set_volume", currentVolume))
 		postBind("onVolumeChanged", map[string]string{"volume": currentVolume, "muted": "false"})
 	case "seekTo":
 		data := paramsList[0].(map[string]interface{})
 		newTime := data["newTime"].(string)
-		fmt.Println("seek_to", newTime)
+		msgPrint(fmt.Sprintln("seek_to", newTime))
 		// update startTime:
 		currentTimeDuration, err := time.ParseDuration(newTime + "s")
 		if err != nil {
@@ -322,19 +330,19 @@ func genericCmd(cmd string, paramsList []interface{}) {
 			"cpn":         "foo",
 		})
 	case "stopVideo":
-		fmt.Println("stop")
+		msgPrintln("stop")
 		postBind("nowPlaying", map[string]string{})
 	case "onUserActivity":
-		fmt.Println("user_action")
+		msgPrintln("user_action")
 	case "next":
-		fmt.Println("next")
+		msgPrintln("next")
 		if curIndex+1 < len(curList) {
 			curIndex++
 			curTime = 0
 			startTime = time.Now()
 			curVideoId = curList[curIndex]
 			curVideo = curListVideos[curIndex]
-			fmt.Println("video_id", curVideoId)
+			msgPrint(fmt.Sprintln("video_id", curVideoId))
 			postBind("nowPlaying", map[string]string{
 				"videoId":      curVideoId,
 				"currentTime":  "0",
@@ -351,14 +359,14 @@ func genericCmd(cmd string, paramsList []interface{}) {
 			})
 		}
 	case "previous":
-		fmt.Println("previous")
+		msgPrintln("previous")
 		if curIndex > 0 {
 			curIndex--
 			curTime = 0
 			startTime = time.Now()
 			curVideoId = curList[curIndex]
 			curVideo = curListVideos[curIndex]
-			fmt.Println("video_id", curVideoId)
+			msgPrint(fmt.Sprintln("video_id", curVideoId))
 			postBind("nowPlaying", map[string]string{
 				"videoId":      curVideoId,
 				"currentTime":  "0",
@@ -375,7 +383,7 @@ func genericCmd(cmd string, paramsList []interface{}) {
 			})
 		}
 	default:
-		fmt.Printf("generic_cmd %s %v\n", cmd, paramsList)
+		msgPrint(fmt.Sprintf("generic_cmd %s %v\n", cmd, paramsList))
 	}
 	if debugEnabled {
 		debugInfo()
@@ -398,17 +406,18 @@ func postBind(sc string, params map[string]string) {
 }
 
 func debugInfo() {
-	fmt.Printf(
+	msgPrint(fmt.Sprintf(
 		"dbg_info curVideoId=%v curListId=%v curList=%v curIndex=%v curTime=%.3f curVolume=%v curState=%v curListVideos=%v curVideo=%v\n",
 		curVideoId,
 		curListId,
 		curList,
-		curIndex, time.Now().Sub(startTime).Seconds(),
+		curIndex,
+		time.Now().Sub(startTime).Seconds(),
 		currentVolume,
 		playState,
 		curListVideos,
 		curVideo,
-	)
+	))
 }
 
 func getListInfo(listId string) (ret *PlaylistInfo) {
@@ -427,4 +436,16 @@ func getListInfo(listId string) (ret *PlaylistInfo) {
 		panic(err)
 	}
 	return
+}
+
+func msgPrint(line string) {
+	printLock.Lock()
+	fmt.Print(line)
+	printLock.Unlock()
+}
+
+func msgPrintln(line string) {
+	printLock.Lock()
+	fmt.Println(line)
+	printLock.Unlock()
 }
