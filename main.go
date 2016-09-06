@@ -45,6 +45,7 @@ const (
 
 var (
 	debugEnabled  bool
+	screenId      string
 	screenName    string
 	screenApp     string
 	bindVals      url.Values
@@ -70,31 +71,34 @@ func init() {
 	flag.BoolVar(&debugEnabled, "d", false, "Enable debug information (including full cmd info)")
 	flag.StringVar(&screenName, "n", defaultScreenName, "Display Name")
 	flag.StringVar(&screenApp, "i", defaultScreenApp, "Display App")
+	flag.StringVar(&screenId, "s", "", "Screen ID (will be generated if empty)")
 }
 
 func main() {
 	flag.Parse()
 	// screen id:
-	resp, err := http.Get("https://www.youtube.com/api/lounge/pairing/generate_screen_id")
-	if err != nil {
-		panic(err)
-		return
+	if screenId == "" {
+		resp, err := http.Get("https://www.youtube.com/api/lounge/pairing/generate_screen_id")
+		if err != nil {
+			panic(err)
+			return
+		}
+		defer resp.Body.Close()
+		body, err := ioutil.ReadAll(resp.Body)
+		if err != nil {
+			panic(err)
+		}
+		screenId = string(body)
 	}
-	defer resp.Body.Close()
-	body, err := ioutil.ReadAll(resp.Body)
-	if err != nil {
-		panic(err)
-	}
-	screenId := string(body)
 	msgPrint(fmt.Sprintln("screen_id", screenId))
 
 	// lounge token:
-	resp, err = http.PostForm("https://www.youtube.com/api/lounge/pairing/get_lounge_token_batch", url.Values{"screen_ids": {screenId}})
+	resp, err := http.PostForm("https://www.youtube.com/api/lounge/pairing/get_lounge_token_batch", url.Values{"screen_ids": {screenId}})
 	if err != nil {
 		panic(err)
 	}
 	defer resp.Body.Close()
-	body, err = ioutil.ReadAll(resp.Body)
+	body, err := ioutil.ReadAll(resp.Body)
 	if err != nil {
 		panic(err)
 	}
@@ -180,7 +184,8 @@ func decodeBindStream(r io.Reader) {
 			break
 		}
 		if err != nil {
-			panic(err)
+			msgPrintln(fmt.Sprint("error", err.Error()))
+			break
 		}
 		switch t.(type) {
 		case json.Number:
@@ -251,12 +256,16 @@ func genericCmd(cmd string, paramsList []interface{}) {
 		}
 		curTime = currentTimeDuration
 		startTime = time.Now().Add(-curTime)
+		ctt, ok := data["ctt"].(string)
+		if !ok {
+			ctt = ""
+		}
 
 		msgPrint(fmt.Sprintln("video_id", curVideoId))
 		postBind("nowPlaying", map[string]string{
 			"videoId":      curVideoId,
 			"currentTime":  currentTime,
-			"ctt":          data["ctt"].(string),
+			"ctt":          ctt,
 			"listId":       curListId,
 			"currentIndex": strconv.Itoa(curIndex),
 			"state":        "3",

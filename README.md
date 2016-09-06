@@ -38,12 +38,14 @@ Minimal dumb YouTube TV example (opens every video in a new browser window, no c
 Usage help:
 
 	$ gotubecast -h
-	Usage of gotubecast:
+	Usage of ./gotubecast:
 	  -d	Enable debug information (including full cmd info)
 	  -i string
 			Display App (default "golang-test-838")
 	  -n string
 			Display Name (default "Golang Test TV")
+	  -s string
+			Screen ID (will be generated if empty)
 
 More in the examples folder.
 
@@ -64,7 +66,8 @@ The following keys are being written to stdout:
 * **remote\_leave \<id\>**: client disconnects
 * **next**
 * **previous**
-* **screen\_id, lounge\_token, option\_sid, option\_gsessionid**: these are needed by the API
+* **screen\_id**: The screen ID will be generated if not passed by -s flag. If you want to keep connected devices over restarts, generate it first and pass it from then on.
+* **lounge\_token, option\_sid, option\_gsessionid**: API internals
 
 ## Roadmap / TODO
 * testing
