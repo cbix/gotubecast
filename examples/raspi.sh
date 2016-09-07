@@ -7,7 +7,7 @@ export SCREEN_NAME="Raspberry Pi"
 export SCREEN_APP="pitubecast-v1"
 export OMX_OPTS="-o hdmi"
 export YTDL_OPTS="-f mp4"
-./gotubecast -s "$SCREEN_ID" -n "$SCREEN_NAME" -i "$SCREEN_APP" | while read line
+gotubecast -s "$SCREEN_ID" -n "$SCREEN_NAME" -i "$SCREEN_APP" | while read line
 do
 	cmd="`cut -d ' ' -f1 <<< "$line"`"
 	arg="`cut -d ' ' -f2 <<< "$line"`"
