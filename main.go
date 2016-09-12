@@ -41,10 +41,11 @@ const (
 	defaultScreenName string = "Golang Test TV"
 	defaultScreenApp  string = "golang-test-838"
 	screenUid         string = "2a026ce9-4429-4c5e-8ef5-0101eddf5671"
+	timefmt           string = "[2006-01-02 15:04:05]"
 )
 
 var (
-	debugEnabled  bool
+	debugLevel    int
 	screenId      string
 	screenName    string
 	screenApp     string
@@ -68,7 +69,7 @@ var (
 )
 
 func init() {
-	flag.BoolVar(&debugEnabled, "d", false, "Enable debug information (including full cmd info)")
+	flag.IntVar(&debugLevel, "d", 0, "Debug information level. 0 = off; 1 = full cmd info; 2 = timestamp prefix, this changes the output format!")
 	flag.StringVar(&screenName, "n", defaultScreenName, "Display Name")
 	flag.StringVar(&screenApp, "i", defaultScreenApp, "Display App")
 	flag.StringVar(&screenId, "s", "", "Screen ID (will be generated if empty)")
@@ -90,7 +91,7 @@ func main() {
 		}
 		screenId = string(body)
 	}
-	msgPrint(fmt.Sprintln("screen_id", screenId))
+	msgPrintln(fmt.Sprint("screen_id ", screenId))
 
 	// lounge token:
 	resp, err := http.PostForm("https://www.youtube.com/api/lounge/pairing/get_lounge_token_batch", url.Values{"screen_ids": {screenId}})
@@ -108,7 +109,7 @@ func main() {
 		panic(err)
 	}
 	tokenScreenItem := tokenObj.Screens[0]
-	msgPrint(fmt.Sprintln("lounge_token", tokenScreenItem.LoungeToken, tokenScreenItem.Expiration/1000))
+	msgPrintln(fmt.Sprint("lounge_token ", tokenScreenItem.LoungeToken, " ", tokenScreenItem.Expiration/1000))
 
 	bindVals = url.Values{
 		"device":        {"LOUNGE_SCREEN"},
@@ -154,7 +155,7 @@ func main() {
 				panic(err)
 			}
 			pairCode := string(body)
-			msgPrint(fmt.Sprintf("pairing_code %s-%s-%s-%s\n", pairCode[0:3], pairCode[3:6], pairCode[6:9], pairCode[9:12]))
+			msgPrintln(fmt.Sprintf("pairing_code %s-%s-%s-%s", pairCode[0:3], pairCode[3:6], pairCode[6:9], pairCode[9:12]))
 			time.Sleep(5 * time.Minute)
 		}
 	}()
@@ -167,7 +168,8 @@ func main() {
 		bindValsGet["CI"] = []string{"0"}
 		resp, err = http.Get("https://www.youtube.com/api/lounge/bc/bind?" + bindValsGet.Encode())
 		if err != nil {
-			panic(err)
+			msgPrintln(fmt.Sprint("error ", err.Error()))
+			continue
 		}
 		decodeBindStream(resp.Body)
 		resp.Body.Close()
@@ -175,17 +177,19 @@ func main() {
 }
 
 // decodeBindStream takes an io.Reader (e.g. bind response body) and parses the command stream
-func decodeBindStream(r io.Reader) {
+func decodeBindStream(r io.Reader) (err error) {
+	err = nil
 	dec := json.NewDecoder(r)
 	dec.UseNumber()
 	for {
-		t, err := dec.Token()
+		var t json.Token
+		t, err = dec.Token()
 		if err == io.EOF {
-			break
+			err = nil
+			return
 		}
 		if err != nil {
-			msgPrintln(fmt.Sprint("error", err.Error()))
-			break
+			return
 		}
 		switch t.(type) {
 		case json.Number:
@@ -195,7 +199,7 @@ func decodeBindStream(r io.Reader) {
 				var indexedCmd []interface{}
 				err = dec.Decode(&indexedCmd)
 				if err != nil {
-					panic(err)
+					return
 				}
 				cmdArray := indexedCmd[1].([]interface{})
 				genericCmd(cmdArray[0].(string), cmdArray[1:])
@@ -204,13 +208,14 @@ func decodeBindStream(r io.Reader) {
 			dec.Token()
 		}
 	}
+	return
 }
 
 // genericCmd interpretes and executes commands from the bind stream
 func genericCmd(cmd string, paramsList []interface{}) {
-	if debugEnabled {
+	if debugLevel >= 1 {
 		debugInfo()
-		msgPrint(fmt.Sprintf("dbg_raw_cmd %v %#v\n", cmd, paramsList))
+		msgPrintln(fmt.Sprintf("dbg_raw_cmd %v %#v", cmd, paramsList))
 	}
 
 	switch cmd {
@@ -219,20 +224,20 @@ func genericCmd(cmd string, paramsList []interface{}) {
 	case "c":
 		sid := paramsList[0].(string)
 		bindVals["SID"] = []string{sid}
-		msgPrint(fmt.Sprintln("option_sid", sid))
+		msgPrintln(fmt.Sprintln("option_sid", sid))
 	case "S":
 		gsessionid := paramsList[0].(string)
 		bindVals["gsessionid"] = []string{gsessionid}
-		msgPrint(fmt.Sprintln("option_gsessionid", gsessionid))
+		msgPrintln(fmt.Sprint("option_gsessionid ", gsessionid))
 	case "remoteConnected":
 		data := paramsList[0].(map[string]interface{})
 		id := data["id"].(string)
 		name := data["name"].(string)
-		msgPrint(fmt.Sprintln("remote_join", id, name))
+		msgPrintln(fmt.Sprint("remote_join ", id, " ", name))
 	case "remoteDisconnected":
 		data := paramsList[0].(map[string]interface{})
 		id := data["id"].(string)
-		msgPrint(fmt.Sprintln("remote_leave", id))
+		msgPrintln(fmt.Sprint("remote_leave ", id))
 	case "getNowPlaying":
 	case "setPlaylist":
 		data := paramsList[0].(map[string]interface{})
@@ -261,7 +266,7 @@ func genericCmd(cmd string, paramsList []interface{}) {
 			ctt = ""
 		}
 
-		msgPrint(fmt.Sprintln("video_id", curVideoId))
+		msgPrintln(fmt.Sprintln("video_id ", curVideoId))
 		postBind("nowPlaying", map[string]string{
 			"videoId":      curVideoId,
 			"currentTime":  currentTime,
@@ -318,12 +323,12 @@ func genericCmd(cmd string, paramsList []interface{}) {
 	case "setVolume":
 		data := paramsList[0].(map[string]interface{})
 		currentVolume = data["volume"].(string)
-		msgPrint(fmt.Sprintln("set_volume", currentVolume))
+		msgPrintln(fmt.Sprint("set_volume ", currentVolume))
 		postBind("onVolumeChanged", map[string]string{"volume": currentVolume, "muted": "false"})
 	case "seekTo":
 		data := paramsList[0].(map[string]interface{})
 		newTime := data["newTime"].(string)
-		msgPrint(fmt.Sprintln("seek_to", newTime))
+		msgPrintln(fmt.Sprint("seek_to ", newTime))
 		// update startTime:
 		currentTimeDuration, err := time.ParseDuration(newTime + "s")
 		if err != nil {
@@ -351,7 +356,7 @@ func genericCmd(cmd string, paramsList []interface{}) {
 			startTime = time.Now()
 			curVideoId = curList[curIndex]
 			curVideo = curListVideos[curIndex]
-			msgPrint(fmt.Sprintln("video_id", curVideoId))
+			msgPrintln(fmt.Sprint("video_id ", curVideoId))
 			postBind("nowPlaying", map[string]string{
 				"videoId":      curVideoId,
 				"currentTime":  "0",
@@ -375,7 +380,7 @@ func genericCmd(cmd string, paramsList []interface{}) {
 			startTime = time.Now()
 			curVideoId = curList[curIndex]
 			curVideo = curListVideos[curIndex]
-			msgPrint(fmt.Sprintln("video_id", curVideoId))
+			msgPrintln(fmt.Sprint("video_id ", curVideoId))
 			postBind("nowPlaying", map[string]string{
 				"videoId":      curVideoId,
 				"currentTime":  "0",
@@ -392,9 +397,9 @@ func genericCmd(cmd string, paramsList []interface{}) {
 			})
 		}
 	default:
-		msgPrint(fmt.Sprintf("generic_cmd %s %v\n", cmd, paramsList))
+		msgPrintln(fmt.Sprintf("generic_cmd %s %v", cmd, paramsList))
 	}
-	if debugEnabled {
+	if debugLevel >= 1 {
 		debugInfo()
 	}
 }
@@ -415,8 +420,8 @@ func postBind(sc string, params map[string]string) {
 }
 
 func debugInfo() {
-	msgPrint(fmt.Sprintf(
-		"dbg_info curVideoId=%v curListId=%v curList=%v curIndex=%v curTime=%.3f curVolume=%v curState=%v curListVideos=%v curVideo=%v\n",
+	msgPrintln(fmt.Sprintf(
+		"dbg_info curVideoId=%v curListId=%v curList=%v curIndex=%v curTime=%.3f curVolume=%v curState=%v curListVideos=%v curVideo=%v",
 		curVideoId,
 		curListId,
 		curList,
@@ -449,12 +454,21 @@ func getListInfo(listId string) (ret *PlaylistInfo) {
 
 func msgPrint(line string) {
 	printLock.Lock()
-	fmt.Print(line)
+	if debugLevel >= 2 {
+		fmt.Print(time.Now().Format(timefmt), " ", line)
+	} else {
+		fmt.Print(line)
+	}
 	printLock.Unlock()
 }
 
 func msgPrintln(line string) {
 	printLock.Lock()
-	fmt.Println(line)
+
+	if debugLevel >= 2 {
+		fmt.Println(time.Now().Format(timefmt), line)
+	} else {
+		fmt.Println(line)
+	}
 	printLock.Unlock()
 }
