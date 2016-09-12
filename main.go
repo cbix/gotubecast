@@ -1,6 +1,10 @@
 package main
 
-// TODO documentation, modularity
+// TODO documentation, modularity (library + main),
+// handle commands by chan selects,
+// "offline" message sent if no command comes in within x seconds (x = 40?),
+// run forever, even if offline,
+// keep player state, devices etc.
 
 import (
 	"encoding/json"
@@ -42,6 +46,7 @@ const (
 	defaultScreenApp  string = "golang-test-838"
 	screenUid         string = "2a026ce9-4429-4c5e-8ef5-0101eddf5671"
 	timefmt           string = "[2006-01-02 15:04:05]"
+	errCountThresh    int    = 5
 )
 
 var (
@@ -98,11 +103,11 @@ func main() {
 	if err != nil {
 		panic(err)
 	}
-	defer resp.Body.Close()
 	body, err := ioutil.ReadAll(resp.Body)
 	if err != nil {
 		panic(err)
 	}
+	resp.Body.Close()
 	tokenObj := new(LoungeTokenScreenList)
 	err = json.Unmarshal(body, &tokenObj)
 	if err != nil {
@@ -147,12 +152,16 @@ func main() {
 				"screen_name":  {screenName},
 			})
 			if err != nil {
-				panic(err)
+				msgPrintln(fmt.Sprint("error ", err.Error()))
+				time.Sleep(10 * time.Second)
+				continue
 			}
-			defer resp.Body.Close()
 			body, err = ioutil.ReadAll(resp.Body)
+			resp.Body.Close()
 			if err != nil {
-				panic(err)
+				msgPrintln(fmt.Sprint("error ", err.Error()))
+				time.Sleep(10 * time.Second)
+				continue
 			}
 			pairCode := string(body)
 			msgPrintln(fmt.Sprintf("pairing_code %s-%s-%s-%s", pairCode[0:3], pairCode[3:6], pairCode[6:9], pairCode[9:12]))
@@ -161,18 +170,30 @@ func main() {
 	}()
 
 	// bind:
+	errCount := 0
 	for {
+		if errCount >= errCountThresh {
+			msgPrintln(fmt.Sprintf("error reached %d errors, terminating...", errCount))
+			return
+		}
 		ofs++
 		bindValsGet := bindVals
 		bindValsGet["RID"] = []string{"rpc"}
 		bindValsGet["CI"] = []string{"0"}
 		resp, err = http.Get("https://www.youtube.com/api/lounge/bc/bind?" + bindValsGet.Encode())
 		if err != nil {
+			errCount++
 			msgPrintln(fmt.Sprint("error ", err.Error()))
 			continue
 		}
-		decodeBindStream(resp.Body)
+		err = decodeBindStream(resp.Body)
 		resp.Body.Close()
+		if err != nil {
+			errCount++
+			msgPrintln(fmt.Sprint("error ", err.Error()))
+			continue
+		}
+		errCount = 0
 	}
 }
 
@@ -266,7 +287,7 @@ func genericCmd(cmd string, paramsList []interface{}) {
 			ctt = ""
 		}
 
-		msgPrintln(fmt.Sprintln("video_id ", curVideoId))
+		msgPrintln(fmt.Sprint("video_id ", curVideoId))
 		postBind("nowPlaying", map[string]string{
 			"videoId":      curVideoId,
 			"currentTime":  currentTime,
