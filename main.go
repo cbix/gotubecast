@@ -214,13 +214,13 @@ func decodeBindStream(r io.Reader) (err error) {
 // genericCmd interpretes and executes commands from the bind stream
 func genericCmd(cmd string, paramsList []interface{}) {
 	if debugLevel >= 1 {
-		debugInfo()
+		//debugInfo()
 		msgPrintln(fmt.Sprintf("dbg_raw_cmd %v %#v", cmd, paramsList))
 	}
 
 	switch cmd {
 	case "noop":
-		msgPrintln("noop")
+		//msgPrintln("noop")
 	case "c":
 		sid := paramsList[0].(string)
 		bindVals["SID"] = []string{sid}
@@ -399,9 +399,11 @@ func genericCmd(cmd string, paramsList []interface{}) {
 	default:
 		msgPrintln(fmt.Sprintf("generic_cmd %s %v", cmd, paramsList))
 	}
-	if debugLevel >= 1 {
-		debugInfo()
-	}
+	/*
+		if debugLevel >= 1 {
+			debugInfo()
+		}
+	*/
 }
 
 func postBind(sc string, params map[string]string) {
@@ -426,7 +428,7 @@ func debugInfo() {
 		curListId,
 		curList,
 		curIndex,
-		time.Now().Sub(startTime).Seconds(),
+		curTime.Seconds(),
 		currentVolume,
 		playState,
 		curListVideos,
