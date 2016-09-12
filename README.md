@@ -61,7 +61,6 @@ The following keys are being written to stdout:
 * **set\_volume \<percent\>**
 
 ### Other
-* **noop**: do nothing
 * **generic\_cmd \<cmd\> \<params\>**: all non-implemented commands
 * **remote\_join \<id\> \<name\>**: client connects
 * **remote\_leave \<id\>**: client disconnects
