@@ -224,7 +224,7 @@ func genericCmd(cmd string, paramsList []interface{}) {
 	case "c":
 		sid := paramsList[0].(string)
 		bindVals["SID"] = []string{sid}
-		msgPrintln(fmt.Sprintln("option_sid", sid))
+		msgPrintln(fmt.Sprint("option_sid ", sid))
 	case "S":
 		gsessionid := paramsList[0].(string)
 		bindVals["gsessionid"] = []string{gsessionid}
