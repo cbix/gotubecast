@@ -13,7 +13,7 @@ function omxdbus {
     OMXPLAYER_DBUS_PID="/tmp/omxplayerdbus.${USER:-root}.pid"
     export DBUS_SESSION_BUS_ADDRESS=`cat $OMXPLAYER_DBUS_ADDR`
     export DBUS_SESSION_BUS_PID=`cat $OMXPLAYER_DBUS_PID`
-    dbus-send --print-reply=literal --session --dest=org.mpris.MediaPlayer2.omxplayer /org/mpris/MediaPlayer2 $* >/dev/null
+    dbus-send --print-reply=literal --session --reply-timeout=100 --dest=org.mpris.MediaPlayer2.omxplayer /org/mpris/MediaPlayer2 $* >/dev/null
 }
 
 gotubecast -s "$SCREEN_ID" -n "$SCREEN_NAME" -i "$SCREEN_APP" | while read line
