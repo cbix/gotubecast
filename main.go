@@ -58,7 +58,9 @@ var (
 	currentVolume string = "100"
 	ofs           uint64 = 0
 	playState     string = "3"
+	ctt           string
 	//playTimer     *time.Timer
+	currentCmdIndex int64
 
 	// these two vars are used to determine the current playing time
 	startTime time.Time
@@ -74,7 +76,7 @@ var (
 )
 
 func init() {
-	flag.IntVar(&debugLevel, "d", 0, "Debug information level. 0 = off; 1 = full cmd info; 2 = timestamp prefix, this changes the output format!")
+	flag.IntVar(&debugLevel, "d", 0, "Debug information level. 0 = off; 1 = full cmd info; 2 = timestamp prefix")
 	flag.StringVar(&screenName, "n", defaultScreenName, "Display Name")
 	flag.StringVar(&screenApp, "i", defaultScreenApp, "Display App")
 	flag.StringVar(&screenId, "s", "", "Screen ID (will be generated if empty)")
@@ -222,8 +224,13 @@ func decodeBindStream(r io.Reader) (err error) {
 				if err != nil {
 					return
 				}
+				var index int64
+				index, err = indexedCmd[0].(json.Number).Int64()
+				if err != nil {
+					return
+				}
 				cmdArray := indexedCmd[1].([]interface{})
-				genericCmd(cmdArray[0].(string), cmdArray[1:])
+				genericCmd(index, cmdArray[0].(string), cmdArray[1:])
 			}
 			// closing ]:
 			dec.Token()
@@ -233,12 +240,14 @@ func decodeBindStream(r io.Reader) (err error) {
 }
 
 // genericCmd interpretes and executes commands from the bind stream
-func genericCmd(cmd string, paramsList []interface{}) {
-	if debugLevel >= 1 {
-		//debugInfo()
-		msgPrintln(fmt.Sprintf("dbg_raw_cmd %v %#v", cmd, paramsList))
+func genericCmd(index int64, cmd string, paramsList []interface{}) {
+	//debugInfo()
+	dbgPrintln(fmt.Sprintf("raw_cmd %v %v %#v", index, cmd, paramsList))
+	if currentCmdIndex > 0 && index <= currentCmdIndex {
+		dbgPrintln(fmt.Sprintf("skipping already seen cmd %d", index))
+		return
 	}
-
+	currentCmdIndex = index
 	switch cmd {
 	case "noop":
 		//msgPrintln("noop")
@@ -260,6 +269,19 @@ func genericCmd(cmd string, paramsList []interface{}) {
 		id := data["id"].(string)
 		msgPrintln(fmt.Sprint("remote_leave ", id))
 	case "getNowPlaying":
+		curTime = time.Now().Sub(startTime)
+		if curVideoId == "" {
+			postBind("nowPlaying", map[string]string{})
+		} else {
+			postBind("nowPlaying", map[string]string{
+				"videoId":      curVideoId,
+				"currentTime":  fmt.Sprintf("%.3f", curTime.Seconds()),
+				"ctt":          ctt,
+				"listId":       curListId,
+				"currentIndex": strconv.Itoa(curIndex),
+				"state":        playState,
+			})
+		}
 	case "setPlaylist":
 		data := paramsList[0].(map[string]interface{})
 		curVideoId = data["videoId"].(string)
@@ -282,7 +304,8 @@ func genericCmd(cmd string, paramsList []interface{}) {
 		}
 		curTime = currentTimeDuration
 		startTime = time.Now().Add(-curTime)
-		ctt, ok := data["ctt"].(string)
+		var ok bool
+		ctt, ok = data["ctt"].(string)
 		if !ok {
 			ctt = ""
 		}
@@ -443,8 +466,8 @@ func postBind(sc string, params map[string]string) {
 }
 
 func debugInfo() {
-	msgPrintln(fmt.Sprintf(
-		"dbg_info curVideoId=%v curListId=%v curList=%v curIndex=%v curTime=%.3f curVolume=%v curState=%v curListVideos=%v curVideo=%v",
+	dbgPrintln(fmt.Sprintf(
+		"info curVideoId=%v curListId=%v curList=%v curIndex=%v curTime=%.3f curVolume=%v curState=%v curListVideos=%v curVideo=%v",
 		curVideoId,
 		curListId,
 		curList,
@@ -487,11 +510,16 @@ func msgPrint(line string) {
 
 func msgPrintln(line string) {
 	printLock.Lock()
-
-	if debugLevel >= 2 {
-		fmt.Println(time.Now().Format(timefmt), line)
-	} else {
-		fmt.Println(line)
-	}
+	fmt.Println(line)
 	printLock.Unlock()
+}
+
+func dbgPrintln(line string) {
+	if debugLevel >= 1 {
+		if debugLevel >= 2 {
+			msgPrintln(fmt.Sprint("dbg ", time.Now().Format(timefmt), " ", line))
+		} else {
+			msgPrintln(fmt.Sprint("dbg ", line))
+		}
+	}
 }
