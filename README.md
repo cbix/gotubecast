@@ -71,7 +71,6 @@ The following keys are being written to stdout:
 
 ## Roadmap / TODO
 * testing
-* provide sample bash script for Raspberry Pi
 * video duration
 * autoplay
 * subtitles
