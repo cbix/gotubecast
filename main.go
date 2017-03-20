@@ -291,9 +291,15 @@ func genericCmd(index int64, cmd string, paramsList []interface{}) {
 		currentTime := data["currentTime"].(string)
 		videoIds := data["videoIds"].(string)
 		curList = strings.Split(videoIds, ",")
-		curIndex, err := strconv.Atoi(data["currentIndex"].(string))
-		if err != nil {
+		var curIndex int
+		var err error
+		if data["currentIndex"] == nil {
 			curIndex = 0
+		} else {
+			curIndex, err = strconv.Atoi(data["currentIndex"].(string))
+			if err != nil {
+				curIndex = 0
+			}
 		}
 		curVideo = curListVideos[curIndex]
 
