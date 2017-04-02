@@ -70,6 +70,7 @@ The following keys are being written to stdout:
 * **lounge\_token, option\_sid, option\_gsessionid**: API internals
 
 ## Roadmap / TODO
+* dbus interface
 * testing
 * video duration
 * autoplay
