@@ -70,7 +70,7 @@ The following keys are being written to stdout:
 * **lounge\_token, option\_sid, option\_gsessionid**: API internals
 
 ## Roadmap / TODO
-* dbus interface
+* dbus interface (for YouTube specific commands as well as connecting to MPRIS supported players)
 * testing
 * video duration
 * autoplay
