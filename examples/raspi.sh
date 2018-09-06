@@ -1,12 +1,16 @@
 #!/bin/bash
 # simple YouTube TV for Raspberry Pi
 # kills any currently playing video as soon as a new video is queued
-# needs youtube-dl and omxplayer
+# needs youtube-dl (or ytdl) and omxplayer
 export SCREEN_ID=""
 export SCREEN_NAME="Raspberry Pi"
 export SCREEN_APP="pitubecast-v1"
 export OMX_OPTS="-o hdmi"
-export YTDL_OPTS="-f mp4"
+# http://rg3.github.io/youtube-dl/
+export YOUTUBEDL="youtube-dl -g -f mp4 https://youtube.com?v="
+# https://github.com/rylio/ytdl
+export YTDL="ytdl -u "
+export EXTRACTOR="$YOUTUBEDL"
 
 function omxdbus {
     OMXPLAYER_DBUS_ADDR="/tmp/omxplayerdbus.${USER:-root}"
@@ -28,7 +32,7 @@ do
             cut -d ' ' -f3- <<< "$line connected"
             ;;
         video_id)
-            YTURL="`youtube-dl -g $YTDL_OPTS https://youtube.com?v=$arg`"
+            YTURL="`$EXTRACTOR$arg`"
             killall omxplayer.bin
             omxplayer $OMX_OPTS "$YTURL" &
             ;;
