@@ -288,7 +288,10 @@ func genericCmd(index int64, cmd string, paramsList []interface{}) {
 		curListId = data["listId"].(string)
 		info := getListInfo(curListId)
 		curListVideos = info.Video
-		currentTime := data["currentTime"].(string)
+		currentTime := ""
+		if data["currentTime"] != nil {
+			currentTime = data["currentTime"].(string)
+		}
 		videoIds := data["videoIds"].(string)
 		curList = strings.Split(videoIds, ",")
 		curVideo = curListVideos[0]
