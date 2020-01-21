@@ -11,13 +11,14 @@ export YOUTUBEDL="youtube-dl -g -f mp4 https://youtube.com?v="
 # https://github.com/rylio/ytdl
 export YTDL="ytdl -u "
 export EXTRACTOR="$YOUTUBEDL"
+export VOL="1.0"
 
 function omxdbus {
     OMXPLAYER_DBUS_ADDR="/tmp/omxplayerdbus.${USER:-root}"
     OMXPLAYER_DBUS_PID="/tmp/omxplayerdbus.${USER:-root}.pid"
     export DBUS_SESSION_BUS_ADDRESS=`cat $OMXPLAYER_DBUS_ADDR`
     export DBUS_SESSION_BUS_PID=`cat $OMXPLAYER_DBUS_PID`
-    dbus-send --print-reply=literal --session --reply-timeout=100 --dest=org.mpris.MediaPlayer2.omxplayer /org/mpris/MediaPlayer2 $* >/dev/null
+    dbus-send --print-reply=literal --session --reply-timeout=100 --dest=org.mpris.MediaPlayer2.omxplayer /org/mpris/MediaPlayer2 $*
 }
 
 gotubecast -s "$SCREEN_ID" -n "$SCREEN_NAME" -i "$SCREEN_APP" | while read line
@@ -34,23 +35,23 @@ do
         video_id)
             YTURL="`$EXTRACTOR$arg`"
             killall omxplayer.bin
-            omxplayer $OMX_OPTS "$YTURL" &
+            vol=(`log=$(echo "l($VOL)/l(10)" | bc -l); val=$(echo "$log * 2000" | bc); echo ${val%.*}`)
+            omxplayer $OMX_OPTS --vol $vol "$YTURL" </dev/null &
             ;;
         play | pause)
-            omxdbus org.mpris.MediaPlayer2.Player.PlayPause
+            omxdbus org.mpris.MediaPlayer2.Player.PlayPause >/dev/null
             ;;
         stop)
-            omxdbus org.mpris.MediaPlayer2.Player.Stop
+            omxdbus org.mpris.MediaPlayer2.Player.Stop >/dev/null
             ;;
         seek_to)
-            omxdbus org.mpris.MediaPlayer2.Player.SetPosition objpath:/not/used int64:${arg}000000
+            omxdbus org.mpris.MediaPlayer2.Player.SetPosition objpath:/not/used int64:${arg}000000 >/dev/null
             ;;
         set_volume)
-            vol="1.0"
             if [ $arg -lt 100 ]; then
-                vol="0.$arg"
+                VOL=`echo $arg / 100 | bc -l | awk '{printf "%0.2f\n", $1}'`
             fi
-            omxdbus org.freedesktop.DBus.Properties.Set string:"org.mpris.MediaPlayer2.Player" string:"Volume" double:$vol
+            omxdbus org.freedesktop.DBus.Properties.Set string:"org.mpris.MediaPlayer2.Player" string:"Volume" double:$VOL
             ;;
     esac
 done
