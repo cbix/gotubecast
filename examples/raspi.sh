@@ -5,7 +5,7 @@
 export SCREEN_ID=""
 export SCREEN_NAME="Raspberry Pi"
 export SCREEN_APP="pitubecast-v1"
-export OMX_OPTS="-o hdmi"
+export OMX_OPTS="-o both"
 # http://rg3.github.io/youtube-dl/
 export YOUTUBEDL="youtube-dl -g -f mp4 https://www.youtube.com/watch?v="
 # https://github.com/rylio/ytdl
