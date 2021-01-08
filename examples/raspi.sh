@@ -6,16 +6,12 @@ export SCREEN_ID=""
 export SCREEN_NAME="Raspberry Pi"
 export SCREEN_APP="pitubecast-v1"
 export OMX_OPTS="-o both"
-# http://rg3.github.io/youtube-dl/
-export YOUTUBEDL="youtube-dl -g -f mp4 https://www.youtube.com/watch?v="
-# https://github.com/rylio/ytdl
-export YTDL="ytdl -u "
-export EXTRACTOR="$YOUTUBEDL"
 export VOL="1.0"
 
 [ ! -z `type -p apt` ] && {
     [ -z `type -p bc` ] && sudo apt install bc -y
     [ -z `type -p omxplayer` ] && sudo apt install omxplayer -y
+    [ -z `type -p youtube-dl` ] && [ -z `type -p ytdl` ] && [ -z `type -p jq` ] && sudo apt install jq -y
 }
 
 function omxdbus {
@@ -24,6 +20,9 @@ function omxdbus {
     export DBUS_SESSION_BUS_ADDRESS=`cat $OMXPLAYER_DBUS_ADDR`
     export DBUS_SESSION_BUS_PID=`cat $OMXPLAYER_DBUS_PID`
     dbus-send --print-reply=literal --session --reply-timeout=100 --dest=org.mpris.MediaPlayer2.omxplayer /org/mpris/MediaPlayer2 $*
+}
+function urldecode {
+    echo -e "$(sed 's/+/ /g;s/%\(..\)/\\x\1/g;')"
 }
 
 gotubecast -s "$SCREEN_ID" -n "$SCREEN_NAME" -i "$SCREEN_APP" | while read line
@@ -38,8 +37,20 @@ do
             cut -d ' ' -f3- <<< "$line connected"
             ;;
         video_id)
-            YTURL="`$EXTRACTOR$arg`"
             killall omxplayer.bin
+            [ ! -z `type -p youtube-dl` ] && { # http://rg3.github.io/youtube-dl/
+                YTURL="`youtube-dl -g -f mp4 https://www.youtube.com/watch?v=$arg`"
+            } || [ ! -z `type -p ytdl` ] && { # https://github.com/rylio/ytdl
+                YTURL="`ytdl -u $arg`"
+            } || {
+                GET=$(wget -qO- "https://www.youtube.com/get_video_info?html5=1&video_id=$arg")
+                for s in $(echo $GET | tr "&" "\n")
+                do
+                    if [ "${s%%=*}" = "player_response" ]; then
+                        YTURL=$(echo ${s:16} | urldecode | jq '.streamingData.formats[-1].url' | tail -c +2 | head -c -2)
+                    fi
+                done
+            }
             vol=(`log=$(echo "l($VOL)/l(10)" | bc -l); val=$(echo "$log * 2000" | bc); echo ${val%.*}`)
             omxplayer $OMX_OPTS --vol $vol "$YTURL" </dev/null &
             ;;
