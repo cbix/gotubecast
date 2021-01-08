@@ -13,6 +13,11 @@ export YTDL="ytdl -u "
 export EXTRACTOR="$YOUTUBEDL"
 export VOL="1.0"
 
+[ ! -z `type -p apt` ] && {
+	[ -z `type -p bc` ] && sudo apt install bc -y
+	[ -z `type -p omxplayer` ] && sudo apt install omxplayer -y
+}
+
 function omxdbus {
     OMXPLAYER_DBUS_ADDR="/tmp/omxplayerdbus.${USER:-root}"
     OMXPLAYER_DBUS_PID="/tmp/omxplayerdbus.${USER:-root}.pid"
