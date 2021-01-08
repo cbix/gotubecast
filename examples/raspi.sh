@@ -2,7 +2,8 @@
 # simple YouTube TV for Raspberry Pi
 # kills any currently playing video as soon as a new video is queued
 # needs youtube-dl (or ytdl) and omxplayer
-export SCREEN_ID=""
+[ ! -e ".screen_id" ] && wget -O ".screen_id" "https://www.youtube.com/api/lounge/pairing/generate_screen_id"
+export SCREEN_ID=$(cat ".screen_id")
 export SCREEN_NAME="Raspberry Pi"
 export SCREEN_APP="pitubecast-v1"
 export OMX_OPTS="-o both"
