@@ -14,8 +14,8 @@ export EXTRACTOR="$YOUTUBEDL"
 export VOL="1.0"
 
 [ ! -z `type -p apt` ] && {
-	[ -z `type -p bc` ] && sudo apt install bc -y
-	[ -z `type -p omxplayer` ] && sudo apt install omxplayer -y
+    [ -z `type -p bc` ] && sudo apt install bc -y
+    [ -z `type -p omxplayer` ] && sudo apt install omxplayer -y
 }
 
 function omxdbus {
