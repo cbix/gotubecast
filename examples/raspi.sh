@@ -10,13 +10,6 @@ export OMX_OPTS="-o both"
 # export ANNOTATE="+0+245"
 export VOL="1.0"
 
-[ ! -z `type -p apt` ] && {
-    [ -z `type -p bc` ] && sudo apt install bc -y
-    [ -z `type -p omxplayer` ] && sudo apt install omxplayer -y
-    [ -z `type -p youtube-dl` ] && [ -z `type -p ytdl` ] && [ -z `type -p jq` ] && sudo apt install jq -y
-    [ ! -z "$ANNOTATE" ] && [ ! -z `type -p nitrogen` ] && [ -e "background.png" ] && [ -z `type -p convert` ] && sudo apt install imagemagick -y
-}
-
 function omxdbus {
     OMXPLAYER_DBUS_ADDR="/tmp/omxplayerdbus.${USER:-root}"
     OMXPLAYER_DBUS_PID="/tmp/omxplayerdbus.${USER:-root}.pid"
