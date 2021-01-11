@@ -7,14 +7,14 @@ export SCREEN_ID=$(cat ".screen_id")
 export SCREEN_NAME="Raspberry Pi"
 export SCREEN_APP="pitubecast-v1"
 export OMX_OPTS="-o both"
-export ANNOTATE="+0+245"
+# export ANNOTATE="+0+245"
 export VOL="1.0"
 
 [ ! -z `type -p apt` ] && {
     [ -z `type -p bc` ] && sudo apt install bc -y
     [ -z `type -p omxplayer` ] && sudo apt install omxplayer -y
     [ -z `type -p youtube-dl` ] && [ -z `type -p ytdl` ] && [ -z `type -p jq` ] && sudo apt install jq -y
-    [ ! -z `type -p nitrogen` ] && [ ! -z "$ANNOTATE" ] && [ -e "background.png" ] && [ -z `type -p convert` ] && sudo apt install imagemagick -y
+    [ ! -z "$ANNOTATE" ] && [ ! -z `type -p nitrogen` ] && [ -e "background.png" ] && [ -z `type -p convert` ] && sudo apt install imagemagick -y
 }
 
 function omxdbus {
@@ -35,7 +35,7 @@ do
     case "$cmd" in
         pairing_code)
             echo "Your pairing code: $arg"
-            [ ! -z `type -p nitrogen` ] && [ ! -z "$ANNOTATE" ] && [ -e "background.png" ] && {
+            [ ! -z "$ANNOTATE" ] && [ ! -z `type -p nitrogen` ] && [ -e "background.png" ] && {
                 convert "background.png" -gravity North -pointsize 30 -fill white -annotate "$ANNOTATE" "$arg" "/tmp/code.png"
                 sudo nitrogen --set-centered "/tmp/code.png"
             }
