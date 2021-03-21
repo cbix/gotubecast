@@ -9,7 +9,7 @@ extension for your favorite media center software.
 ## Build + Install
 Provided you have [golang correctly set up](https://golang.org/doc/install):
 
-    go get github.com/CBiX/gotubecast
+    go get cbix.de/gotubecast
 
 ## Run
 With default options:
