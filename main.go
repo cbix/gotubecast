@@ -15,7 +15,7 @@ import (
 	"net/http"
 	"net/url"
 	"strconv"
-	"strings"
+	//"strings"
 	"sync"
 	"time"
 )
@@ -285,6 +285,7 @@ func genericCmd(index int64, cmd string, paramsList []interface{}) {
 	case "setPlaylist":
 		data := paramsList[0].(map[string]interface{})
 		curVideoId = data["videoId"].(string)
+		/*
 		curListId = data["listId"].(string)
 		info := getListInfo(curListId)
 		curListVideos = info.Video
@@ -315,7 +316,9 @@ func genericCmd(index int64, cmd string, paramsList []interface{}) {
 			ctt = ""
 		}
 
+		*/
 		msgPrintln(fmt.Sprint("video_id ", curVideoId))
+		/*
 		postBind("nowPlaying", map[string]string{
 			"videoId":      curVideoId,
 			"currentTime":  currentTime,
@@ -331,7 +334,10 @@ func genericCmd(index int64, cmd string, paramsList []interface{}) {
 			"duration":    strconv.Itoa(curVideo.Length),
 			"cpn":         "foo",
 		})
-	case "updatePlaylist":
+		*/
+	// FIXME
+	//case "updatePlaylist":
+		/*
 		data := paramsList[0].(map[string]interface{})
 		curListId = data["listId"].(string)
 		if data["videoIds"] != nil {
@@ -347,6 +353,7 @@ func genericCmd(index int64, cmd string, paramsList []interface{}) {
 		}
 		info := getListInfo(curListId)
 		curListVideos = info.Video
+		*/
 	case "play":
 		msgPrintln("play")
 		playState = "1"
