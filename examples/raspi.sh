@@ -2,15 +2,12 @@
 # simple YouTube TV for Raspberry Pi
 # kills any currently playing video as soon as a new video is queued
 # needs youtube-dl (or ytdl) and omxplayer
-export SCREEN_ID=""
+[ ! -e ".screen_id" ] && wget -O ".screen_id" "https://www.youtube.com/api/lounge/pairing/generate_screen_id"
+export SCREEN_ID=$(cat ".screen_id")
 export SCREEN_NAME="Raspberry Pi"
 export SCREEN_APP="pitubecast-v1"
-export OMX_OPTS="-o hdmi"
-# http://rg3.github.io/youtube-dl/
-export YOUTUBEDL="youtube-dl -g -f mp4 https://www.youtube.com/watch?v="
-# https://github.com/rylio/ytdl
-export YTDL="ytdl -u "
-export EXTRACTOR="$YOUTUBEDL"
+export OMX_OPTS="-o both"
+# export ANNOTATE="+0+245"
 export VOL="1.0"
 
 function omxdbus {
@@ -20,6 +17,9 @@ function omxdbus {
     export DBUS_SESSION_BUS_PID=`cat $OMXPLAYER_DBUS_PID`
     dbus-send --print-reply=literal --session --reply-timeout=100 --dest=org.mpris.MediaPlayer2.omxplayer /org/mpris/MediaPlayer2 $*
 }
+function urldecode {
+    echo -e "$(sed 's/+/ /g;s/%\(..\)/\\x\1/g;')"
+}
 
 gotubecast -s "$SCREEN_ID" -n "$SCREEN_NAME" -i "$SCREEN_APP" | while read line
 do
@@ -28,13 +28,29 @@ do
     case "$cmd" in
         pairing_code)
             echo "Your pairing code: $arg"
+            [ ! -z "$ANNOTATE" ] && [ ! -z `type -p nitrogen` ] && [ -e "background.png" ] && {
+                convert "background.png" -gravity North -pointsize 30 -fill white -annotate "$ANNOTATE" "$arg" "/tmp/code.png"
+                sudo nitrogen --set-centered "/tmp/code.png"
+            }
             ;;
         remote_join)
             cut -d ' ' -f3- <<< "$line connected"
             ;;
         video_id)
-            YTURL="`$EXTRACTOR$arg`"
             killall omxplayer.bin
+            [ ! -z `type -p youtube-dl` ] && { # http://rg3.github.io/youtube-dl/
+                YTURL="`youtube-dl -g -f mp4 https://www.youtube.com/watch?v=$arg`"
+            } || [ ! -z `type -p ytdl` ] && { # https://github.com/rylio/ytdl
+                YTURL="`ytdl -u $arg`"
+            } || {
+                GET=$(wget -qO- "https://www.youtube.com/get_video_info?html5=1&video_id=$arg")
+                for s in $(echo $GET | tr "&" "\n")
+                do
+                    if [ "${s%%=*}" = "player_response" ]; then
+                        YTURL=$(echo ${s:16} | urldecode | jq '.streamingData.formats[-1].url' | tail -c +2 | head -c -2)
+                    fi
+                done
+            }
             vol=(`log=$(echo "l($VOL)/l(10)" | bc -l); val=$(echo "$log * 2000" | bc); echo ${val%.*}`)
             omxplayer $OMX_OPTS --vol $vol "$YTURL" </dev/null &
             ;;
