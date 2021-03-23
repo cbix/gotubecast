@@ -1,0 +1,4 @@
+#this are the default(except it's in a folder /home/pi/youtube) this is the script that's run inside the ssh connection to run the script!
+echo we in
+cd youtube/gotubecast
+bash vlcCostum.sh
